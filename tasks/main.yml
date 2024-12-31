@@ -1,0 +1,63 @@
+---
+# tasks file for unifi-network-server
+
+- name: "Unifi-Network-Server - Download Unifi PGP key"
+  ansible.builtin.apt_key:
+    url: "https://dl.ui.com/unifi/unifi-repo.gpg"
+
+- name: "Download MongoDB PGP key"
+  ansible.builtin.get_url: 
+    url: "https://www.mongodb.org/static/pgp/server-{{ unifi_network_server_mongodb_version }}.asc"
+    dest: "/tmp/mongodb-org-server-{{ unifi_network_server_mongodb_version }}-archive-keyring.gpg"
+    mode: '0644'
+    force: true
+
+- name: "Unifi-Network-Server - Convert Mongo PGP key to GPG format" 
+  ansible.builtin.shell: 
+    cmd: "gpg --dearmor < /tmp/mongodb-org-server-{{ unifi_network_server_mongodb_version }}-archive-keyring.gpg > /usr/share/keyrings/mongodb-org-server-{{ unifi_network_server_mongodb_version }}-archive-keyring.gpg"
+  changed_when: false
+
+- name: "Unifi-Network-Server - Add sources.list entry"
+  ansible.builtin.apt_repository:
+    repo: "{{ item.repo }}"
+    filename: "{{ item.filename }}"
+    mode: '0644'
+  loop:
+    - repo: "deb [ arch=amd64,arm64 ] https://www.ui.com/downloads/unifi/debian stable ubiquiti"
+      filename: "100-ubnt-unifi"
+    - repo: "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-org-server-{{ unifi_network_server_mongodb_version }}-archive-keyring.gpg] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/{{ unifi_network_server_mongodb_version }} multiverse"
+      filename: "mongodb-org"
+
+- name: "Unifi-Network-Server - Download MongoDB Package Dependencies"
+  ansible.builtin.get_url: 
+    url: "http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb"
+    dest: "/tmp/libssl1.1_1.1.1f-1ubuntu2_amd64.deb"
+    mode: '0644'
+    force: true
+
+- name: "Unifi-Network-Server - Install MongoDB Package Dependencies"
+  ansible.builtin.apt:
+    deb: "/tmp/libssl1.1_1.1.1f-1ubuntu2_amd64.deb"
+    
+
+- name: "Unifi-Network-Server - Prerequisite Package Installs"
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    update_cache: true
+  loop:
+    - ca-certificates
+    - apt-transport-https
+    - libssl3
+    - mongodb-org
+
+- name: "Unifi-Network-Server - Start and Enable MongoDB"
+  ansible.builtin.systemd:
+    name: mongod.service
+    enabled: true
+    state: started
+
+- name: "Unifi-Network-Server - Start Unifi"
+  ansible.builtin.systemd:
+    name: unifi.service
+    enabled: true
+    state: started

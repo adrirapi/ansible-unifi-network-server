@@ -1,0 +1,10 @@
+---
+- name: Install Unifi Network Server
+  hosts: unifi_network_server01
+  become: true
+
+  roles: 
+    - /opt/ansible/roles/ansible-unifi-network-server
+
+  vars:
+    unifi_network_server_mongodb_version: "4.4"

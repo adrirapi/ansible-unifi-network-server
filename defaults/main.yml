@@ -1,0 +1,5 @@
+---
+# defaults file for unifi-network-server
+
+unifi_network_server_mongodb_version: "4.4"
+
